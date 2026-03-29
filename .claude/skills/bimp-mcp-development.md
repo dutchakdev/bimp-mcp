@@ -177,3 +177,24 @@ npm run test:watch       # unit tests in watch mode
 | `src/prompts.ts` | MCP prompts with ERP domain context |
 | `vitest.config.ts` | Test configuration with unit/integration/functional projects |
 | `tests/setup-env.ts` | Loads `.env` for integration/functional tests |
+
+## How Nomenclatures Extended Works
+
+`src/nomenclatures-extended.ts` provides hardcoded tools for undocumented API endpoints that cannot be generated from the OpenAPI spec.
+
+### Pattern: Hardcoded Tools with Field Mapping
+
+Unlike generated tools (from `bimp-api.json`), these tools are manually defined with:
+1. **Field mapping** — `FIELD_MAP` maps English keys to 1C Cyrillic keys
+2. **Translation functions** — `toEnglish()` and `toCyrillic()` convert objects between formats
+3. **Tool definitions** — same `UtilityTool` interface as `utilities.ts`
+
+### Adding New Undocumented Endpoints
+
+If you discover another undocumented endpoint (via browser DevTools):
+
+1. Add field mappings to `FIELD_MAP` in `src/nomenclatures-extended.ts`
+2. Create a tool function following the existing pattern (e.g., `createNomenclaturesReadTool`)
+3. Add it to the `createNomenclaturesTools()` return array
+4. It will be auto-registered by `index.ts` (no changes needed there)
+5. Add unit tests in `tests/unit/nomenclatures-extended.test.ts`

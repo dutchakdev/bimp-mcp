@@ -116,3 +116,38 @@ Many `readList` endpoints return summary records that are missing important nest
 6. **Counterparty dual role**: A counterparty can be both `isCustomer: true` and `isSupplier: true`.
 7. **EntryStatus**: Documents like salesInvoice and refundToCustomer use `EntryStatus: 0` (Draft) and `EntryStatus: 1` (Posted).
 8. **Period filter**: Date-ranged entities accept `periodable: ["2025-01-01T00:00:00.000Z", "2025-12-31T23:59:59.000Z"]` for filtering by period.
+
+### Planning & Accounting Fields
+
+Available only via `bimp_nomenclatures_read` / `bimp_nomenclatures_upsert` (extended endpoint):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| minStock | number | Minimum stock level — triggers reorder when stock drops below |
+| maxStock | number | Maximum stock level — target for replenishment |
+| speedOfDemand | number | Demand rate — average units consumed per period |
+| insuranceReserve | number | Safety stock — buffer against demand variability |
+| deliveryTerm | number | Delivery time in days — lead time from order to receipt |
+| plannedCost | number | Planned unit cost for accounting |
+
+### Full Production Chain
+
+```
+Counterparty (supplier)
+  → PurchaseInvoice (procure components)
+    → Inventory (components in stock)
+      → Specification (BOM: components → product)
+        → ProductionOrder (plan production)
+          → ProductionAssembly (execute production)
+            → Inventory (finished goods in stock)
+              → SalesInvoice (sell to customer)
+```
+
+### Procurement Analysis Pattern
+1. Read planning fields (minStock, speedOfDemand, deliveryTerm) via `bimp_nomenclatures_read`
+2. Get current stock via `bimp_nomenclature_readStocks`
+3. Fetch BOMs via `bimp_specification_readList` (enrich=true)
+4. Calculate deficit per product: `max(0, minStock - currentStock)`
+5. Explode BOM to get required component quantities
+6. Compare component needs against component stock
+7. Generate procurement recommendations ordered by deliveryTerm (longest lead time first)
