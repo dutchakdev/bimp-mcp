@@ -11,6 +11,7 @@ import * as z from "zod";
 import { BimpClient } from "./client.js";
 import { generateTools, type ToolDefinition } from "./tool-generator.js";
 import { createUtilityTools } from "./utilities.js";
+import { createNomenclaturesTools } from "./nomenclatures-extended.js";
 import { PROMPT_TEXTS } from "./prompts.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -34,6 +35,7 @@ for (const tool of generatedTools) {
 }
 
 const utilityTools = createUtilityTools(client, toolMap);
+const nomenclaturesTools = createNomenclaturesTools(client);
 
 const server = new McpServer(
   { name: "bimp-mcp", version: "0.1.0" },
@@ -130,6 +132,11 @@ lowLevelServer.setRequestHandler(ListToolsRequestSchema, async () => ({
       description: t.description,
       inputSchema: t.inputSchema,
     })),
+    ...nomenclaturesTools.map((t) => ({
+      name: t.name,
+      description: t.description,
+      inputSchema: t.inputSchema,
+    })),
   ],
 }));
 
@@ -163,6 +170,17 @@ lowLevelServer.setRequestHandler(CallToolRequestSchema, async (request) => {
     const utilityTool = utilityTools.find((t) => t.name === name);
     if (utilityTool) {
       const result = await utilityTool.handler(params);
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ],
+      };
+    }
+
+    // Nomenclatures extended tools
+    const nomenclaturesTool = nomenclaturesTools.find((t) => t.name === name);
+    if (nomenclaturesTool) {
+      const result = await nomenclaturesTool.handler(params);
       return {
         content: [
           { type: "text" as const, text: JSON.stringify(result, null, 2) },
