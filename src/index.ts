@@ -35,11 +35,21 @@ for (const tool of generatedTools) {
   toolMap.set(tool.name, tool);
 }
 
+// Build entity→actions index for bimp_api description
+const entityActions = new Map<string, string[]>();
+for (const tool of generatedTools) {
+  const parts = tool.name.replace("bimp_", "").split("_");
+  const action = parts.pop()!;
+  const entity = parts.join("_");
+  if (!entityActions.has(entity)) entityActions.set(entity, []);
+  entityActions.get(entity)!.push(action);
+}
+
 const utilityTools = createUtilityTools(client, toolMap);
 const nomenclaturesTools = createNomenclaturesTools(client);
 
 const server = new McpServer(
-  { name: "bimp-mcp", version: "0.2.2" },
+  { name: "bimp-mcp", version: "0.3.0" },
   { capabilities: { logging: {} } }
 );
 
@@ -100,14 +110,41 @@ server.registerTool(
 // Use low-level server for dynamic tool registration (raw JSON Schema from OpenAPI)
 const lowLevelServer = server.server;
 
+// Build entity catalog for bimp_api description
+const entityCatalog = [...entityActions.entries()]
+  .sort()
+  .map(([entity, actions]) => `${entity}: ${actions.join(", ")}`)
+  .join("\n");
+
 lowLevelServer.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
-    ...generatedTools.map((t) => ({
-      name: t.name,
-      description: t.description,
-      inputSchema: t.inputSchema,
-    })),
-    // Auth tools are registered via McpServer, but we need them in the list too
+    // Meta tool — replaces 135 individual generated tools
+    {
+      name: "bimp_api",
+      description:
+        "Call any BIMP ERP API endpoint. Combines all entity CRUD operations into one tool.\n\n" +
+        "Usage: provide tool_name in the format bimp_{entity}_{action} (e.g. bimp_specification_readList, bimp_nomenclature_create).\n\n" +
+        "Available entities and actions:\n" +
+        entityCatalog +
+        "\n\nCommon params: readList needs {pagination:{offset:0,count:100}}, read needs {uuid}, " +
+        "create/update/insert need entity-specific fields. " +
+        "Filter by date: {periodable:[\"2026-01-01T00:00:00.000Z\",\"2026-12-31T23:59:59.000Z\"]}",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          tool_name: {
+            type: "string",
+            description: "Tool name: bimp_{entity}_{action} (e.g. bimp_specification_readList, bimp_nomenclature_read, bimp_salesInvoice_create)",
+          },
+          params: {
+            type: "object",
+            description: "Parameters for the API call. For readList: {pagination:{offset:0,count:100}}. For read: {uuid:\"...\"}. For create/update: entity fields.",
+          },
+        },
+        required: ["tool_name"],
+      },
+    },
+    // Auth tools
     {
       name: "bimp_auth_listCompanies",
       description: "List all companies accessible to the current user",
@@ -128,11 +165,13 @@ lowLevelServer.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["codeOrUuid"],
       },
     },
+    // Utility tools
     ...utilityTools.map((t) => ({
       name: t.name,
       description: t.description,
       inputSchema: t.inputSchema,
     })),
+    // Nomenclatures extended tools
     ...nomenclaturesTools.map((t) => ({
       name: t.name,
       description: t.description,
@@ -189,7 +228,35 @@ lowLevelServer.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     }
 
-    // Generated API tools
+    // bimp_api meta-tool — routes to any generated tool
+    if (name === "bimp_api") {
+      const toolName = params.tool_name as string;
+      const callParams = (params.params ?? {}) as Record<string, unknown>;
+
+      const toolDef = toolMap.get(toolName);
+      if (!toolDef) {
+        return {
+          content: [{
+            type: "text" as const,
+            text: `Unknown tool: ${toolName}. Available tools: ${[...toolMap.keys()].join(", ")}`,
+          }],
+          isError: true,
+        };
+      }
+
+      const result = await client.request(
+        toolDef.metadata.method,
+        toolDef.metadata.path,
+        callParams
+      );
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ],
+      };
+    }
+
+    // Direct generated API tools (still supported for Claude Code / backward compat)
     const toolDef = toolMap.get(name);
     if (!toolDef) {
       return {
