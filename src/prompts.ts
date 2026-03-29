@@ -100,7 +100,23 @@ BIMP is a Ukrainian cloud ERP for SMBs. Key entities and their API names:
 1. **readList returns INCOMPLETE data** for many entities. For example, salesInvoice.readList does NOT include products, warehouse, or VAT. Use enrich=true in bimp_fetch_all or call the read endpoint separately.
 2. **No total count** in paginated responses. The only way to know you've reached the end is when data.length < requested count.
 3. **Max page size is 100** for offset/count pagination.
-4. **Three pagination types**: offset/count (most POST endpoints), cursor (inventory), page/pageSize (inventory GET).`,
+4. **Three pagination types**: offset/count (most POST endpoints), cursor (inventory), page/pageSize (inventory GET).
+
+## Planning & Accounting Fields (Extended API)
+
+Some nomenclature fields are only available via the undocumented \`/org2/nomenclatures/\` endpoints (plural):
+
+| Field | Description |
+|-------|-------------|
+| minStock | Minimum stock level |
+| maxStock | Maximum stock level |
+| speedOfDemand | Demand rate |
+| insuranceReserve | Safety stock |
+| deliveryTerm | Delivery time in days |
+| plannedCost | Planned cost |
+
+These fields are NOT available in the standard \`/org2/nomenclature/\` (singular) API.
+Use the \`bimp_nomenclatures_read\`, \`bimp_nomenclatures_upsert\`, and \`bimp_nomenclatures_readList\` tools to access them.`,
   },
 
   bimp_data_analysis: {
@@ -261,11 +277,19 @@ BIMP is a Ukrainian cloud ERP for SMBs. Key entities and their API names:
 - Transfer materials between warehouses for production
 - bimp_movementOfInventories_create
 
+## Procurement of Materials
+Before production, ensure materials are available:
+1. Create a supplier counterparty (if needed): bimp_counterparty_insert with isSupplier=true
+2. Create purchase invoice: bimp_purchaseInvoice_create with products, warehouse, counterparty
+3. Verify stock: bimp_nomenclature_readStocks to confirm material availability
+
 ## Production Planning Pattern
 1. Fetch all specifications: bimp_fetch_all tool=bimp_specification_readList enrich=true
-2. Get current inventory: bimp_inventory_readList
-3. Calculate what can be produced based on available materials
-4. Create production orders for feasible items`,
+2. Get current inventory: bimp_inventory_readList or bimp_nomenclature_readStocks
+3. Read planning fields: bimp_nomenclatures_read for minStock, maxStock, speedOfDemand
+4. Calculate what can be produced based on available materials vs BOM requirements
+5. Calculate deficit: max(0, minStock - currentStock) for each product
+6. Create production orders for feasible items`,
   },
 
   bimp_procurement_workflow: {
@@ -303,11 +327,14 @@ BIMP is a Ukrainian cloud ERP for SMBs. Key entities and their API names:
 - Types: bimp_contract_readTypes
 - Statuses: bimp_contract_readStatuses
 
-## Procurement Planning Pattern
-1. Analyze current inventory: bimp_fetch_all tool=bimp_inventory_readList (or bimp_nomenclature_readStocks)
-2. Check specifications for required materials: bimp_fetch_all tool=bimp_specification_readList enrich=true
-3. Identify shortages
-4. Create supplier invoices for needed materials`,
+## Procurement Needs Analysis
+1. Read planning fields for each product: bimp_nomenclatures_read (minStock, maxStock, speedOfDemand, insuranceReserve, deliveryTerm)
+2. Get current inventory: bimp_fetch_all tool=bimp_inventory_readList or bimp_nomenclature_readStocks
+3. Calculate deficit per product: max(0, minStock - currentStock)
+4. Check specifications for required materials: bimp_fetch_all tool=bimp_specification_readList enrich=true
+5. Identify shortages based on BOM × planned production quantity
+6. Factor in deliveryTerm to prioritize urgent orders
+7. Create supplier invoices for needed materials`,
   },
 };
 

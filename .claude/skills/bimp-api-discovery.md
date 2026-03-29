@@ -139,3 +139,41 @@ The `tool-generator.test.ts` tests verify that excluded paths are filtered, sche
 - Auth endpoints (`/org2/auth/api-*`) and image download are excluded via `EXCLUDED_PATHS` in `tool-generator.ts`.
 - Integration paths matching `EXCLUDED_PATH_PATTERNS` (e.g., Zoho People) are also excluded.
 - BIMP always returns `{ success: boolean, data: ... }` — the `data` field structure is what matters for schema documentation.
+
+## Undocumented API Layer: /org2/nomenclatures/ (Plural)
+
+In addition to the standard `/org2/nomenclature/api-*` (singular) endpoints documented in the OpenAPI spec, BIMP has undocumented endpoints at `/org2/nomenclatures/` (plural) that expose planning/accounting fields not available in the standard API.
+
+### Endpoints
+
+| Endpoint | Method | Request Body | Response |
+|----------|--------|-------------|----------|
+| `/org2/nomenclatures/read` | POST | `{ lang: "ru", uid: "<uuid>" }` | Full product card with planning fields |
+| `/org2/nomenclatures/upsert` | POST | 1C-style Cyrillic body (see below) | `{ success: true, data: { GUID: "..." } }` |
+| `/org2/nomenclatures/readList` | POST | `{}` | Array of all products with МинимальныйОстаток |
+
+### 1C-Style Field Names
+
+These endpoints use mixed Cyrillic/English field names (1C convention):
+
+```json
+{
+  "GUID": "uuid",
+  "Наименование": "Product name",
+  "МинимальныйОстаток": 10,
+  "МаксимальныйОстаток": 100,
+  "speedOfDemand": 3,
+  "insuranceReserve": 5,
+  "deliveryTerm": 7,
+  "ТипДокумента": "101"
+}
+```
+
+The `ТипДокумента` field must always be `"101"` for nomenclature items.
+
+### MCP Tools
+
+These endpoints are wrapped as hardcoded MCP tools in `src/nomenclatures-extended.ts` with automatic English↔1C field translation:
+- `bimp_nomenclatures_read` — read with planning fields
+- `bimp_nomenclatures_upsert` — create/update with planning fields
+- `bimp_nomenclatures_readList` — list all with minStock

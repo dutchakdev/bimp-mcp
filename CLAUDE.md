@@ -23,6 +23,7 @@ npm run test:watch          # Unit tests in watch mode
 - **`src/client.ts`** — HTTP client with auto-login (env vars), token refresh on 401, and company switching. All API requests go through `BimpClient.request()`.
 - **`src/tool-generator.ts`** — Parses OpenAPI spec at startup, generates MCP tool definitions. Path `/org2/{entity}/api-{action}` becomes tool `bimp_{entity}_{action}`.
 - **`src/utilities.ts`** — Three utility tools: `bimp_fetch_all` (auto-pagination + enrich), `bimp_batch_read` (parallel detail reads), `bimp_bulk_update` (mass updates).
+- **`src/nomenclatures-extended.ts`** — Three hardcoded tools for undocumented `/org2/nomenclatures/` endpoints. English↔1C Cyrillic field mapping for planning fields (minStock, maxStock, speedOfDemand, etc.).
 - **`src/prompts.ts`** — Six MCP prompts providing ERP domain context, workflow guides, and data analysis patterns.
 - **`src/index.ts`** — Wires McpServer with prompts (Zod) and low-level handlers for dynamic tools (raw JSON Schema).
 
@@ -32,6 +33,7 @@ npm run test:watch          # Unit tests in watch mode
 - **readList returns incomplete data** for many entities (salesInvoice, specification, etc.) — use `enrich: true` in `bimp_fetch_all` or call the `read` endpoint separately
 - **Three pagination types**: offset/count (POST, max 100), cursor (GET inventory), page/pageSize (GET inventory)
 - **Auth flow**: login → accessToken → selectCompany → companyAccessToken → all requests
+- **Undocumented API layer** at `/org2/nomenclatures/` (plural, note: different from `/org2/nomenclature/` singular) — exposes planning/accounting fields using 1C-style Cyrillic field names
 
 ## Testing
 
