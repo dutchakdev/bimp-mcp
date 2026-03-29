@@ -11,7 +11,8 @@
     "test:integration": "vitest run --project integration",
     "test:functional": "vitest run --project functional",
     "test:all": "vitest run",
-    "test:watch": "vitest --project unit"
+    "test:watch": "vitest --project unit",
+    "demo:nomenclatures": "tsx scripts/demo-nomenclatures.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
