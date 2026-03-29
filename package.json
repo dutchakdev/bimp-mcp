@@ -1,6 +1,6 @@
 {
   "name": "bimp-mcp",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "MCP server for BIMP ERP API — ~140 tools dynamically generated from OpenAPI spec, plus planning/accounting fields and bulk operations",
   "type": "module",
   "main": "dist/index.js",
@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
+    "node-fetch": "^3.3.2",
     "zod": "^3.25.0"
   },
   "devDependencies": {

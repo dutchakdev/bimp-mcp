@@ -1,3 +1,10 @@
+import nodeFetch from "node-fetch";
+
+function _fetch(url: string | URL, init?: RequestInit): Promise<Response> {
+  const fn = typeof globalThis.fetch === "function" ? globalThis.fetch : (nodeFetch as unknown as typeof globalThis.fetch);
+  return fn(url, init);
+}
+
 export interface BimpClientConfig {
   email: string;
   password: string;
@@ -253,7 +260,7 @@ export class BimpClient {
     fetchOptions.signal = controller.signal;
 
     try {
-      return await fetch(url, fetchOptions);
+      return await _fetch(url, fetchOptions);
     } finally {
       clearTimeout(timer);
     }
