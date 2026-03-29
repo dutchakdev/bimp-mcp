@@ -39,7 +39,7 @@ const utilityTools = createUtilityTools(client, toolMap);
 const nomenclaturesTools = createNomenclaturesTools(client);
 
 const server = new McpServer(
-  { name: "bimp-mcp", version: "0.1.0" },
+  { name: "bimp-mcp", version: "0.2.0" },
   { capabilities: { logging: {} } }
 );
 
