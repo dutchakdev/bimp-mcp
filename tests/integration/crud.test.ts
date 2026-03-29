@@ -52,7 +52,7 @@ describe("Nomenclature CRUD", () => {
     const result = (await client.request(
       "POST",
       "/org2/nomenclature/api-update",
-      { uuid: createdUuid, name: `Updated Product ${Date.now()}`, article: "TEST-ART-001" }
+      { uuid: createdUuid, comment: `Updated at ${Date.now()}` }
     )) as { success: boolean };
     expect(result.success).toBe(true);
   });

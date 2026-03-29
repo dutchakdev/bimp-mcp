@@ -11,6 +11,8 @@ interface PromptResult {
   }>;
 }
 
+export const PROMPT_TEXTS: Record<string, { description: string; text: string }> = {};
+
 const PROMPTS: Record<string, { def: PromptDef; text: string }> = {
   bimp_erp_context: {
     def: {
@@ -308,6 +310,11 @@ BIMP is a Ukrainian cloud ERP for SMBs. Key entities and their API names:
 4. Create supplier invoices for needed materials`,
   },
 };
+
+// Populate PROMPT_TEXTS for index.ts McpServer prompt registration
+for (const [name, prompt] of Object.entries(PROMPTS)) {
+  PROMPT_TEXTS[name] = { description: prompt.def.description, text: prompt.text };
+}
 
 export function getPrompts(): PromptDef[] {
   return Object.values(PROMPTS).map((p) => p.def);
