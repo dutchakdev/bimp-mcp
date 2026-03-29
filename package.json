@@ -1,18 +1,41 @@
 {
   "name": "bimp-mcp",
   "version": "0.2.0",
-  "description": "MCP server for BIMP ERP API",
+  "description": "MCP server for BIMP ERP API — ~140 tools dynamically generated from OpenAPI spec, plus planning/accounting fields and bulk operations",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "bin": {
+    "bimp-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "bimp-api.json"
+  ],
   "scripts": {
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build",
     "test": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
     "test:functional": "vitest run --project functional",
     "test:all": "vitest run",
     "test:watch": "vitest --project unit",
     "demo:nomenclatures": "tsx scripts/demo-nomenclatures.ts"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "bimp",
+    "erp",
+    "bimpsoft",
+    "claude",
+    "ai-tools"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dutchakdev/bimp-mcp.git"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
