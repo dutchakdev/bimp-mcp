@@ -21,7 +21,11 @@
     "test:functional": "vitest run --project functional",
     "test:all": "vitest run",
     "test:watch": "vitest --project unit",
-    "demo:nomenclatures": "tsx scripts/demo-nomenclatures.ts"
+    "demo:nomenclatures": "tsx scripts/demo-nomenclatures.ts",
+    "release": "./scripts/release.sh",
+    "release:patch": "./scripts/release.sh patch",
+    "release:minor": "./scripts/release.sh minor",
+    "release:major": "./scripts/release.sh major"
   },
   "keywords": [
     "mcp",

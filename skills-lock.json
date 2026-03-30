@@ -1,6 +1,16 @@
 {
   "version": 1,
   "skills": {
+    "bimp-erp-context": {
+      "source": "dutchakdev/bimp-mcp",
+      "sourceType": "github",
+      "computedHash": "bd5ec51153052ed7600cb60544b009f0aa9f264117f405ea7fbf2148cdd8c243"
+    },
+    "bimp-mcp-guide": {
+      "source": "dutchakdev/bimp-mcp",
+      "sourceType": "github",
+      "computedHash": "56f7b7f00941ceb47f3474f441de8020ba96485068545f4e2f17d1e6f3f16d01"
+    },
     "mcp-builder": {
       "source": "anthropics/skills",
       "sourceType": "github",
