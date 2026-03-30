@@ -1,6 +1,6 @@
 {
   "name": "bimp-mcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "MCP server for BIMP ERP API — ~140 tools dynamically generated from OpenAPI spec, plus planning/accounting fields and bulk operations",
   "type": "module",
   "main": "dist/index.js",
