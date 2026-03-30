@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -52,9 +54,28 @@ jobs:
       # Pack tarball for GitHub Release
       - run: npm pack
 
-      # Create GitHub Release with tarball
+      # Extract release notes from annotated tag message
+      - name: Extract release notes
+        id: notes
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          # Get tag annotation (skip first line which is the version title)
+          NOTES=$(git tag -l --format='%(contents:body)' "$TAG")
+          if [ -z "$NOTES" ]; then
+            # Fallback: generate from commits since previous tag
+            PREV_TAG=$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || echo "")
+            if [ -n "$PREV_TAG" ]; then
+              NOTES=$(git log "$PREV_TAG".."$TAG" --pretty=format:"- %s" --no-merges | grep -v "^- release:" || true)
+            else
+              NOTES="Initial release"
+            fi
+          fi
+          # Write to file for multiline support
+          echo "$NOTES" > /tmp/release-notes.md
+
+      # Create GitHub Release with notes + tarball
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          body_path: /tmp/release-notes.md
           files: bimp-mcp-*.tgz
