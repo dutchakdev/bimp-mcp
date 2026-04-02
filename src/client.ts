@@ -41,7 +41,7 @@ export class BimpClient {
     await this.ensureAuthenticated();
     const result = await this.executeRequest(method, path, params, options?.timeout);
 
-    if (result.status === 401) {
+    if (result.status === 401 || result.status === 498) {
       await this.refreshAuth();
       const retry = await this.executeRequest(method, path, params, options?.timeout);
       if (!retry.ok) {
@@ -203,8 +203,8 @@ export class BimpClient {
       timeout
     );
 
-    if (resp.status === 401) {
-      return { ok: false, status: 401, data: null };
+    if (resp.status === 401 || resp.status === 498) {
+      return { ok: false, status: resp.status, data: null };
     }
 
     const json = (await resp.json()) as unknown;

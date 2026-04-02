@@ -82,7 +82,10 @@ function createFetchAllTool(
     description:
       "Auto-paginate any readList endpoint to fetch all items. " +
       "Supports offset, cursor, page, and none pagination types. " +
-      "Use enrich=true to call the corresponding read endpoint for full details on each item.",
+      "Use enrich=true to call the corresponding read endpoint for full details on each item.\n\n" +
+      "IMPORTANT: Always set limit (recommended: 50 with enrich, 200 without) to avoid response truncation. " +
+      "Use skip to paginate through results: first call skip=0 limit=50, then skip=50 limit=50, etc. " +
+      "If the response contains _truncated, use skip and limit to get remaining items.",
     inputSchema: {
       type: "object",
       properties: {
@@ -90,9 +93,13 @@ function createFetchAllTool(
           type: "string",
           description: "Name of a readList tool to paginate (e.g. bimp_nomenclature_readList)",
         },
+        skip: {
+          type: "number",
+          description: "Number of items to skip from the beginning (default: 0). Use with limit to paginate: skip=0 limit=50, then skip=50 limit=50, etc.",
+        },
         limit: {
           type: "number",
-          description: "Maximum number of items to return (default: unlimited)",
+          description: "Maximum number of items to return. RECOMMENDED: 50 with enrich=true, 200 without enrich. Avoid omitting to prevent response truncation.",
         },
         enrich: {
           type: "boolean",
@@ -107,9 +114,12 @@ function createFetchAllTool(
     },
     handler: async (params: Record<string, unknown>) => {
       const toolName = params.tool as string;
+      const skip = (params.skip as number) ?? 0;
       const limit = params.limit as number | undefined;
       const enrich = params.enrich as boolean | undefined;
       const filters = (params.filters ?? {}) as Record<string, unknown>;
+      // Effective limit accounts for skip: fetch skip+limit items, then slice
+      const fetchLimit = limit ? skip + limit : undefined;
 
       const toolDef = toolMap.get(toolName);
       if (!toolDef) {
@@ -136,8 +146,8 @@ function createFetchAllTool(
           const page = response.data ?? [];
           allItems.push(...(page as Array<Record<string, unknown>>));
 
-          if (limit && allItems.length >= limit) {
-            allItems = allItems.slice(0, limit);
+          if (fetchLimit && allItems.length >= fetchLimit) {
+            allItems = allItems.slice(0, fetchLimit);
             break;
           }
 
@@ -165,8 +175,8 @@ function createFetchAllTool(
           const page = response.data ?? [];
           allItems.push(...(page as Array<Record<string, unknown>>));
 
-          if (limit && allItems.length >= limit) {
-            allItems = allItems.slice(0, limit);
+          if (fetchLimit && allItems.length >= fetchLimit) {
+            allItems = allItems.slice(0, fetchLimit);
             break;
           }
 
@@ -193,8 +203,8 @@ function createFetchAllTool(
           const items = response.data ?? [];
           allItems.push(...(items as Array<Record<string, unknown>>));
 
-          if (limit && allItems.length >= limit) {
-            allItems = allItems.slice(0, limit);
+          if (fetchLimit && allItems.length >= fetchLimit) {
+            allItems = allItems.slice(0, fetchLimit);
             break;
           }
 
@@ -217,9 +227,15 @@ function createFetchAllTool(
         const items = response.data ?? [];
         allItems.push(...(items as Array<Record<string, unknown>>));
 
-        if (limit && allItems.length > limit) {
-          allItems = allItems.slice(0, limit);
+        if (fetchLimit && allItems.length > fetchLimit) {
+          allItems = allItems.slice(0, fetchLimit);
         }
+      }
+
+      // Apply skip — slice off the first `skip` items
+      const totalFetched = allItems.length;
+      if (skip > 0) {
+        allItems = allItems.slice(skip);
       }
 
       // Enrich: call the read endpoint for each item
@@ -243,10 +259,20 @@ function createFetchAllTool(
           10
         );
 
-        return { items: enrichedItems, count: enrichedItems.length };
+        return {
+          items: enrichedItems,
+          count: enrichedItems.length,
+          skip,
+          hasMore: totalFetched > skip + enrichedItems.length,
+        };
       }
 
-      return { items: allItems, count: allItems.length };
+      return {
+        items: allItems,
+        count: allItems.length,
+        skip,
+        hasMore: totalFetched > skip + allItems.length,
+      };
     },
   };
 }

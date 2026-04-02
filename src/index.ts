@@ -17,6 +17,73 @@ import { PROMPT_TEXTS } from "./prompts.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Maximum response size in characters.
+ * MCP clients (Claude Code, Claude Desktop) have tool result size limits.
+ * We truncate large responses to stay within safe bounds.
+ */
+const MAX_RESPONSE_SIZE = 80_000;
+
+/**
+ * Truncate a tool result if its JSON representation exceeds MAX_RESPONSE_SIZE.
+ * For array-based results (items/data), uses binary search to fit max items.
+ */
+function truncateResponse(result: unknown): string {
+  const json = JSON.stringify(result, null, 2);
+  if (json.length <= MAX_RESPONSE_SIZE) return json;
+
+  if (typeof result === "object" && result !== null) {
+    const obj = result as Record<string, unknown>;
+    const arrayKey = ["items", "data"].find((k) => Array.isArray(obj[k]));
+    if (arrayKey) {
+      const arr = obj[arrayKey] as unknown[];
+      const totalCount = arr.length;
+
+      // Binary search for max number of items that fit
+      let lo = 0;
+      let hi = arr.length;
+      while (lo < hi) {
+        const mid = Math.ceil((lo + hi) / 2);
+        const test = JSON.stringify(
+          { ...obj, [arrayKey]: arr.slice(0, mid), count: mid, _truncated: { total: totalCount, returned: mid } },
+          null,
+          2
+        );
+        if (test.length <= MAX_RESPONSE_SIZE) {
+          lo = mid;
+        } else {
+          hi = mid - 1;
+        }
+      }
+
+      return JSON.stringify(
+        {
+          ...obj,
+          [arrayKey]: arr.slice(0, lo),
+          count: lo,
+          _truncated: {
+            total: totalCount,
+            returned: lo,
+            message:
+              `Response truncated: showing ${lo} of ${totalCount} items. ` +
+              `To get all data, re-call with limit=${lo} and iterate using skip parameter: ` +
+              `skip=0 limit=${lo}, then skip=${lo} limit=${lo}, etc. ` +
+              `For bimp_fetch_all: recommended limit is 50 with enrich=true, 200 without.`,
+          },
+        },
+        null,
+        2
+      );
+    }
+  }
+
+  // Fallback: hard truncate for non-array responses
+  return (
+    json.slice(0, MAX_RESPONSE_SIZE) +
+    "\n\n... [TRUNCATED: response exceeded size limit. Use limit parameter or filters to reduce result size.]"
+  );
+}
+
 const config = {
   email: process.env.BIMP_EMAIL ?? "",
   password: process.env.BIMP_PASSWORD ?? "",
@@ -212,7 +279,7 @@ lowLevelServer.setRequestHandler(CallToolRequestSchema, async (request) => {
       const result = await utilityTool.handler(params);
       return {
         content: [
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          { type: "text" as const, text: truncateResponse(result) },
         ],
       };
     }
@@ -223,7 +290,7 @@ lowLevelServer.setRequestHandler(CallToolRequestSchema, async (request) => {
       const result = await nomenclaturesTool.handler(params);
       return {
         content: [
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          { type: "text" as const, text: truncateResponse(result) },
         ],
       };
     }
@@ -251,7 +318,7 @@ lowLevelServer.setRequestHandler(CallToolRequestSchema, async (request) => {
       );
       return {
         content: [
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          { type: "text" as const, text: truncateResponse(result) },
         ],
       };
     }
@@ -272,7 +339,7 @@ lowLevelServer.setRequestHandler(CallToolRequestSchema, async (request) => {
     );
     return {
       content: [
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        { type: "text" as const, text: truncateResponse(result) },
       ],
     };
   } catch (error) {
